@@ -30,6 +30,10 @@ def process_price_change(asset, side, price_level, new_size):
         book[price_level] = new_size
 
 def process_data(json_datas, trade=True):
+    # Handle both single event dict and list of events
+    # Polymarket WebSocket returns list for 'book' events, dict for 'price_change' events
+    if isinstance(json_datas, dict):
+        json_datas = [json_datas]
 
     for json_data in json_datas:
         event_type = json_data['event_type']
@@ -42,7 +46,7 @@ def process_data(json_datas, trade=True):
                 asyncio.create_task(perform_trade(asset))
                 
         elif event_type == 'price_change':
-            for data in json_data['changes']:
+            for data in json_data['price_changes']:
                 side = 'bids' if data['side'] == 'BUY' else 'asks'
                 price_level = float(data['price'])
                 new_size = float(data['size'])
@@ -73,6 +77,9 @@ def remove_from_performing(col, id):
         global_state.performing_timestamps[col].pop(id, None)
 
 def process_user_data(rows):
+    # Handle both single event dict and list of events
+    if isinstance(rows, dict):
+        rows = [rows]
 
     for row in rows:
         market = row['market']
