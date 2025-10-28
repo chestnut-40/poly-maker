@@ -30,6 +30,10 @@ def send_buy_order(order):
         order (dict): Order details including token, price, size, and market parameters
     """
     client = global_state.client
+    
+    print("SENT BUY ORDER --------------------------------")
+    print(order)
+    print("--------------------------------")
 
     # Only cancel existing orders if we need to make significant changes
     existing_buy_size = order['orders']['buy']['size']
@@ -278,7 +282,8 @@ async def perform_trade(market):
             
                 print(f"Position: {position}, Other Position: {other_position}, "
                       f"Trade Size: {row['trade_size']}, Max Size: {max_size}, "
-                      f"buy_amount: {buy_amount}, sell_amount: {sell_amount}")
+                      f"buy_amount: {buy_amount}, sell_amount: {sell_amount}, "
+                      f"min_size: {row['min_size']}")
 
                 # File to store risk management information for this market
                 fname = 'positions/' + str(market) + '.json'
@@ -346,11 +351,27 @@ async def perform_trade(market):
                 # ------- BUY ORDER LOGIC -------
                 # Get max_size, defaulting to trade_size if not specified
                 max_size = row.get('max_size', row['trade_size'])
-                
+
                 # Only buy if:
                 # 1. Position is less than max_size (new logic)
                 # 2. Position is less than absolute cap (250)
                 # 3. Buy amount is above minimum size
+
+                # Debug: Check all buy conditions
+                buy_conditions = {
+                    'position < max_size': position < max_size,
+                    'position < 250': position < 250,
+                    'buy_amount > 0': buy_amount > 0,
+                    'buy_amount >= min_size': buy_amount >= row['min_size']
+                }
+
+                if not all(buy_conditions.values()):
+                    print(f"  BUY BLOCKED for {detail['answer']}: {buy_conditions}")
+                    print("Position: ", position)
+                    print("Max size: ", max_size)
+                    print("Buy amount: ", buy_amount)
+                    print("Min size: ", row['min_size'])
+
                 if position < max_size and position < 250 and buy_amount > 0 and buy_amount >= row['min_size']:
                     # Get reference price from market data
                     sheet_value = row['best_bid']
